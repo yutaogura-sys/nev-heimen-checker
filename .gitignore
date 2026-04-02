@@ -1,0 +1,12 @@
+# 素材（正解事例・補助金要件PDF等 - 公開不要）
+素材/
+
+# 一時ファイル
+temp_images/
+
+# Claude設定
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
