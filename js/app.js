@@ -77,7 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
     els.btnKiso.addEventListener('click', () => selectType('kiso'));
     els.btnMokutekichi.addEventListener('click', () => selectType('mokutekichi'));
 
-    els.uploadArea.addEventListener('click', () => els.fileInput.click());
+    els.uploadArea.addEventListener('click', (e) => {
+      // label内のinputクリックとの二重発火を防止
+      if (e.target.closest('.upload-btn') || e.target === els.fileInput) return;
+      els.fileInput.click();
+    });
     els.fileInput.addEventListener('change', onFileSelect);
     els.removeFile.addEventListener('click', removeFile);
 

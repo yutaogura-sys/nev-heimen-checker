@@ -429,6 +429,10 @@ details[open] > .guide-toggle::before {
   transform: scale(0.97);
 }
 
+.btn:disabled:active {
+  transform: none;
+}
+
 .btn-primary {
   background: var(--primary);
   color: #fff;

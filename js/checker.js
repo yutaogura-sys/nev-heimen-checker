@@ -501,6 +501,8 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
 
       if (totalBase64Size > 18_000_000) {
         console.warn(`ページ${i}でペイロードサイズ上限に近づいたため、以降のページをスキップします`);
+        canvas.width = 0;
+        canvas.height = 0;
         break;
       }
 
@@ -622,7 +624,16 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
       throw new Error('Gemini の安全フィルタにより応答がブロックされました。図面の内容を確認してください。');
     }
 
-    const text = candidate?.content?.parts?.[0]?.text;
+    // Gemini 2.5系モデルは「thinking」パートを先頭に返す場合がある
+    // 最後のtextパートを取得することでJSON出力を確実に読み取る
+    const parts = candidate?.content?.parts || [];
+    let text = null;
+    for (let pi = parts.length - 1; pi >= 0; pi--) {
+      if (parts[pi].text != null) {
+        text = parts[pi].text;
+        break;
+      }
+    }
     if (!text) {
       throw new Error('Gemini から有効なテキスト応答が得られませんでした。再試行してください。');
     }
