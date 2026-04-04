@@ -41,6 +41,8 @@ document.addEventListener('DOMContentLoaded', () => {
     detectedInfo:      $('detectedInfo'),
     resultCategories:  $('resultCategories'),
     aiComment:         $('aiComment'),
+    costSection:       $('costSection'),
+    costBody:          $('costBody'),
     exportBtn:         $('exportBtn'),
     recheckBtn:        $('recheckBtn'),
   };
@@ -386,6 +388,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // AIコメント
     els.aiComment.textContent = result.overallComment || '（コメントなし）';
+
+    // API料金目安
+    renderCostInfo(result);
   }
 
   function renderDetectedInfo(info) {
@@ -446,6 +451,48 @@ document.addEventListener('DOMContentLoaded', () => {
           ${detailHtml}
         </div>
       </li>
+    `;
+  }
+
+  // ─── API料金目安 ──────────────────────────────
+  function renderCostInfo(result) {
+    if (!result.tokenInfo || !result.modelId) {
+      els.costSection.style.display = 'none';
+      return;
+    }
+
+    const pricing = DrawingChecker.MODEL_PRICING[result.modelId];
+    if (!pricing) {
+      els.costSection.style.display = 'none';
+      return;
+    }
+
+    els.costSection.style.display = '';
+    const modelName = DrawingChecker.MODELS.find(m => m.id === result.modelId)?.name || result.modelId;
+    const inputTokens = result.tokenInfo.inputTokens;
+    const outputTokens = result.tokenInfo.outputTokens;
+    const inputCost = (inputTokens / 1_000_000) * pricing.input;
+    const outputCost = (outputTokens / 1_000_000) * pricing.output;
+    const totalUsd = inputCost + outputCost;
+    const totalJpy = Math.round(totalUsd * 150);
+
+    els.costBody.innerHTML = `
+      <div class="cost-row">
+        <span class="cost-label">モデル</span>
+        <span class="cost-value">${escapeHtml(modelName)}</span>
+      </div>
+      <div class="cost-row">
+        <span class="cost-label">入力トークン</span>
+        <span class="cost-value">${inputTokens.toLocaleString()} tokens ($${inputCost.toFixed(4)})</span>
+      </div>
+      <div class="cost-row">
+        <span class="cost-label">出力トークン</span>
+        <span class="cost-value">${outputTokens.toLocaleString()} tokens ($${outputCost.toFixed(4)})</span>
+      </div>
+      <div class="cost-total">
+        <span class="cost-label">合計（概算）</span>
+        <span class="cost-value">$${totalUsd.toFixed(4)} (約${totalJpy}円)</span>
+      </div>
     `;
   }
 

@@ -973,6 +973,74 @@ details[open] > .guide-toggle::before {
   white-space: pre-wrap;
 }
 
+/* --- API料金目安 --- */
+.cost-section {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.cost-section h3 {
+  padding: 12px 16px;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cost-note {
+  padding: 8px 16px 0;
+  font-size: 11px;
+  color: var(--gray-400);
+}
+
+.cost-body {
+  padding: 12px 16px 16px;
+}
+
+.cost-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.cost-row + .cost-row {
+  border-top: 1px solid var(--gray-100);
+}
+
+.cost-label {
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.cost-value {
+  text-align: right;
+}
+
+.cost-total {
+  margin-top: 8px;
+  padding-top: 10px;
+  border-top: 2px solid var(--primary);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.cost-total .cost-label {
+  color: var(--gray-800);
+}
+
+.cost-total .cost-value {
+  color: var(--primary);
+  font-size: 15px;
+}
+
 /* --- アクション --- */
 .result-actions {
   display: flex;

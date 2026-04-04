@@ -541,6 +541,13 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
     { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', tier: 'free' },
   ];
 
+  // ─── モデル別料金（USD / 1Mトークン）──────────────
+  const MODEL_PRICING = {
+    'gemini-2.5-pro':   { input: 1.25,  output: 10.00 },
+    'gemini-2.5-flash': { input: 0.15,  output: 3.50  },
+    'gemini-2.0-flash': { input: 0.10,  output: 0.40  },
+  };
+
   // ─── モデル別接続テスト ────────────────────────
   async function verifyModel(apiKey, modelId) {
     try {
@@ -653,8 +660,16 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
       jsonStr = codeBlockMatch[1];
     }
 
+    // usageMetadata からトークン数を抽出
+    const usage = data.usageMetadata || {};
+    const tokenInfo = {
+      inputTokens: usage.promptTokenCount || 0,
+      outputTokens: usage.candidatesTokenCount || 0,
+    };
+
     try {
-      return JSON.parse(jsonStr.trim());
+      const parsed = JSON.parse(jsonStr.trim());
+      return { parsed, tokenInfo };
     } catch (parseErr) {
       console.error('Gemini応答のJSONパースに失敗:', text.substring(0, 500));
       throw new Error('Gemini の応答を解析できませんでした。再試行してください。');
@@ -735,10 +750,12 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
   // ─── メインチェック実行 ────────────────────────
   async function check(apiKey, file, type, modelId) {
     const { images, pageCount } = await pdfToImages(file);
-    const geminiResult = await callGemini(apiKey, images, type, modelId);
-    const aggregated = aggregateResults(geminiResult, type);
+    const { parsed, tokenInfo } = await callGemini(apiKey, images, type, modelId);
+    const aggregated = aggregateResults(parsed, type);
     aggregated.pageCount = pageCount;
     aggregated.analyzedPages = images.length;
+    aggregated.tokenInfo = tokenInfo;
+    aggregated.modelId = modelId || 'gemini-2.5-flash';
     return aggregated;
   }
 
@@ -775,7 +792,23 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
     });
 
     if (result.overallComment) {
-      text += `--- AI コメント ---\n${result.overallComment}\n`;
+      text += `--- AI コメント ---\n${result.overallComment}\n\n`;
+    }
+
+    if (result.tokenInfo && result.modelId) {
+      const pricing = MODEL_PRICING[result.modelId];
+      const modelName = MODELS.find(m => m.id === result.modelId)?.name || result.modelId;
+      if (pricing) {
+        const inputCost = (result.tokenInfo.inputTokens / 1_000_000) * pricing.input;
+        const outputCost = (result.tokenInfo.outputTokens / 1_000_000) * pricing.output;
+        const totalUsd = inputCost + outputCost;
+        const totalJpy = Math.round(totalUsd * 150);
+        text += `--- API 料金目安（税別）---\n`;
+        text += `モデル: ${modelName}\n`;
+        text += `入力: ${result.tokenInfo.inputTokens.toLocaleString()} tokens ($${inputCost.toFixed(4)})\n`;
+        text += `出力: ${result.tokenInfo.outputTokens.toLocaleString()} tokens ($${outputCost.toFixed(4)})\n`;
+        text += `合計: $${totalUsd.toFixed(4)} (約${totalJpy}円)\n`;
+      }
     }
 
     return text;
@@ -791,6 +824,7 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
     resultToText,
     CATEGORIES,
     MODELS,
+    MODEL_PRICING,
     COMMON_CHECKS,
     KISO_CHECKS,
     MOKUTEKICHI_CHECKS,
