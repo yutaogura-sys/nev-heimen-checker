@@ -578,6 +578,19 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
       }
     }));
 
+    // Gemini 2.5 Pro はthinkingモードがデフォルト有効のため
+    // responseMimeType: "application/json" と競合してエラーになる。
+    // Pro: responseMimeType を外し、プロンプト指示 + パースで対応
+    // Flash: responseMimeType で確実にJSON出力させる
+    const isPro = (modelId || '').includes('pro');
+    const generationConfig = {
+      temperature: 0.1,
+      maxOutputTokens: isPro ? 16384 : 8192,
+    };
+    if (!isPro) {
+      generationConfig.responseMimeType = "application/json";
+    }
+
     const requestBody = {
       contents: [
         {
@@ -587,11 +600,7 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
           ]
         }
       ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 8192,
-        responseMimeType: "application/json",
-      },
+      generationConfig,
     };
 
     const useModel = modelId || 'gemini-2.5-flash';
