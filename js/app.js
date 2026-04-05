@@ -462,7 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const pricing = DrawingChecker.MODEL_PRICING[result.modelId];
-    if (!pricing) {
+    if (!pricing || (result.tokenInfo.inputTokens === 0 && result.tokenInfo.outputTokens === 0)) {
       els.costSection.style.display = 'none';
       return;
     }

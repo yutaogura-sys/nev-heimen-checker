@@ -795,7 +795,7 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
       text += `--- AI コメント ---\n${result.overallComment}\n\n`;
     }
 
-    if (result.tokenInfo && result.modelId) {
+    if (result.tokenInfo && result.modelId && (result.tokenInfo.inputTokens > 0 || result.tokenInfo.outputTokens > 0)) {
       const pricing = MODEL_PRICING[result.modelId];
       const modelName = MODELS.find(m => m.id === result.modelId)?.name || result.modelId;
       if (pricing) {
