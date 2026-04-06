@@ -213,6 +213,7 @@
         <!-- アクション -->
         <div class="result-actions">
           <button class="btn btn-secondary" id="exportBtn">&#128196; 結果をコピー</button>
+          <button class="btn btn-secondary" id="excelBtn">&#128202; Excelダウンロード</button>
           <button class="btn btn-primary" id="recheckBtn">&#128260; 別の図面をチェック</button>
         </div>
       </div>
@@ -225,6 +226,8 @@
     <p class="footer-note">本ツールはAI判定のため、最終確認は目視でお願いします。</p>
   </footer>
 
+  <!-- SheetJS (xlsx) CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <!-- PDF.js CDN -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>

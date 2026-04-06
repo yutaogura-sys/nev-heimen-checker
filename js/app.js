@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     costSection:       $('costSection'),
     costBody:          $('costBody'),
     exportBtn:         $('exportBtn'),
+    excelBtn:          $('excelBtn'),
     recheckBtn:        $('recheckBtn'),
   };
 
@@ -109,6 +110,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     els.checkBtn.addEventListener('click', runCheck);
     els.exportBtn.addEventListener('click', exportResult);
+    els.excelBtn.addEventListener('click', exportExcel);
     els.recheckBtn.addEventListener('click', resetForRecheck);
   }
 
@@ -521,6 +523,128 @@ document.addEventListener('DOMContentLoaded', () => {
       els.exportBtn.textContent = '\u30B3\u30D4\u30FC\u3057\u307E\u3057\u305F!';
       setTimeout(() => { els.exportBtn.innerHTML = '&#128196; 結果をコピー'; }, 2000);
     });
+  }
+
+  // ─── Excelエクスポート ────────────────────────
+  function exportExcel() {
+    if (!lastResult) return;
+
+    const result = lastResult;
+    const typeLabel = state.selectedType === 'kiso' ? '基礎充電' : '目的地充電';
+    const modelInfo = DrawingChecker.MODELS.find(m => m.id === state.selectedModel);
+    const modelLabel = modelInfo ? modelInfo.name : state.selectedModel;
+    const overallLabel = result.overall === 'pass' ? '合格' : result.overall === 'warn' ? '要確認' : '不合格';
+    const statusLabels = { pass: '合格', fail: '不合格', warn: '要確認' };
+
+    // --- シート1: 判定結果 ---
+    const rows = [];
+    rows.push(['NeV 平面図 要件判定結果']);
+    rows.push([]);
+    rows.push(['図面タイプ', typeLabel]);
+    rows.push(['使用モデル', modelLabel]);
+    rows.push(['解析ページ数', result.analyzedPages]);
+    rows.push(['総合判定', overallLabel]);
+    rows.push(['合格項目', `${result.totalPass} / ${result.totalItems}`]);
+    rows.push(['必須項目', `${result.requiredPass} / ${result.requiredTotal}`]);
+    rows.push([]);
+
+    // 読み取り情報
+    const info = result.detectedInfo;
+    if (info) {
+      rows.push(['【読み取り情報】']);
+      const infoFields = [
+        ['施設名', info.facility_name],
+        ['図面名称', info.drawing_title],
+        ['工事名', info.project_name],
+        ['作成者', info.creator],
+        ['縮尺', info.scale],
+        ['作成日', info.creation_date],
+        ['路面状況', info.surface_material],
+        ['EV充電設備数', info.equipment_count],
+        ['設備詳細', info.equipment_details],
+        ['充電スペース数', info.space_count],
+        ['スペース寸法', info.space_dimensions_list],
+        ['路面表示', info.ground_marking_info],
+        ['既設設備', info.existing_equipment_info],
+      ];
+      infoFields.forEach(([label, value]) => {
+        if (value && value.toString().trim()) rows.push([label, value.toString()]);
+      });
+      rows.push([]);
+    }
+
+    // AIコメント
+    if (result.overallComment) {
+      rows.push(['【AI総合コメント】']);
+      rows.push([result.overallComment]);
+      rows.push([]);
+    }
+
+    // API料金
+    if (result.tokenInfo && result.modelId && (result.tokenInfo.inputTokens > 0 || result.tokenInfo.outputTokens > 0)) {
+      const pricing = DrawingChecker.MODEL_PRICING[result.modelId];
+      if (pricing) {
+        const inputCost = (result.tokenInfo.inputTokens / 1_000_000) * pricing.input;
+        const outputCost = (result.tokenInfo.outputTokens / 1_000_000) * pricing.output;
+        const totalUsd = inputCost + outputCost;
+        const totalJpy = Math.round(totalUsd * 150);
+        rows.push(['【API料金目安（税別）】']);
+        rows.push(['モデル', modelLabel]);
+        rows.push(['入力トークン', result.tokenInfo.inputTokens, `$${inputCost.toFixed(4)}`]);
+        rows.push(['出力トークン', result.tokenInfo.outputTokens, `$${outputCost.toFixed(4)}`]);
+        rows.push(['合計（概算）', `$${totalUsd.toFixed(4)}`, `約${totalJpy}円`]);
+        rows.push([]);
+      }
+    }
+
+    const ws1 = XLSX.utils.aoa_to_sheet(rows);
+
+    // 列幅設定
+    ws1['!cols'] = [{ wch: 20 }, { wch: 40 }, { wch: 16 }];
+
+    // --- シート2: チェック項目別結果 ---
+    const categories = DrawingChecker.CATEGORIES;
+    const detailRows = [];
+    detailRows.push(['カテゴリ', '項目', '必須', '判定', '検出内容', '詳細']);
+
+    const sortedCats = Object.keys(result.categoryResults).sort((a, b) => {
+      return (categories[a]?.order || 99) - (categories[b]?.order || 99);
+    });
+
+    sortedCats.forEach(catKey => {
+      const catData = result.categoryResults[catKey];
+      const catMeta = categories[catKey] || { title: catKey };
+      catData.items.forEach(item => {
+        detailRows.push([
+          catMeta.title,
+          item.label,
+          item.required ? '必須' : '任意',
+          statusLabels[item.status] || item.status,
+          item.found_text || '',
+          item.detail || '',
+        ]);
+      });
+    });
+
+    const ws2 = XLSX.utils.aoa_to_sheet(detailRows);
+    ws2['!cols'] = [{ wch: 28 }, { wch: 30 }, { wch: 6 }, { wch: 8 }, { wch: 40 }, { wch: 50 }];
+
+    // ワークブック作成
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws1, '判定結果');
+    XLSX.utils.book_append_sheet(wb, ws2, 'チェック項目別');
+
+    // ファイル名生成
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const facilityName = (info && info.facility_name) ? `_${info.facility_name}` : '';
+    const fileName = `平面図チェック結果_${typeLabel}${facilityName}_${dateStr}.xlsx`;
+
+    XLSX.writeFile(wb, fileName);
+
+    const orig = els.excelBtn.textContent;
+    els.excelBtn.textContent = 'ダウンロード完了!';
+    setTimeout(() => { els.excelBtn.innerHTML = '&#128202; Excelダウンロード'; }, 2000);
   }
 
   // ─── 再チェック ───────────────────────────────
