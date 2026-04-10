@@ -528,6 +528,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // ─── Excelエクスポート ────────────────────────
   function exportExcel() {
     if (!lastResult) return;
+    if (typeof XLSX === 'undefined') {
+      alert('Excelライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
+      return;
+    }
 
     const result = lastResult;
     const typeLabel = state.selectedType === 'kiso' ? '基礎充電' : '目的地充電';
@@ -551,7 +555,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 読み取り情報
     const info = result.detectedInfo;
     if (info) {
-      rows.push(['【読み取り情報】']);
       const infoFields = [
         ['施設名', info.facility_name],
         ['図面名称', info.drawing_title],
@@ -567,10 +570,12 @@ document.addEventListener('DOMContentLoaded', () => {
         ['路面表示', info.ground_marking_info],
         ['既設設備', info.existing_equipment_info],
       ];
-      infoFields.forEach(([label, value]) => {
-        if (value && value.toString().trim()) rows.push([label, value.toString()]);
-      });
-      rows.push([]);
+      const validInfoRows = infoFields.filter(([, value]) => value && value.toString().trim());
+      if (validInfoRows.length > 0) {
+        rows.push(['【読み取り情報】']);
+        validInfoRows.forEach(([label, value]) => rows.push([label, value.toString()]));
+        rows.push([]);
+      }
     }
 
     // AIコメント
@@ -634,11 +639,13 @@ document.addEventListener('DOMContentLoaded', () => {
     XLSX.utils.book_append_sheet(wb, ws1, '判定結果');
     XLSX.utils.book_append_sheet(wb, ws2, 'チェック項目別');
 
-    // ファイル名生成
+    // ファイル名生成（禁止文字をサニタイズ）
     const now = new Date();
     const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
-    const facilityName = (info && info.facility_name) ? `_${info.facility_name}` : '';
-    const fileName = `平面図チェック結果_${typeLabel}${facilityName}_${dateStr}.xlsx`;
+    const rawName = (info && info.facility_name) ? info.facility_name : '';
+    const safeName = rawName.replace(/[\\/:*?"<>|]/g, '_').substring(0, 50);
+    const facilityPart = safeName ? `_${safeName}` : '';
+    const fileName = `平面図チェック結果_${typeLabel}${facilityPart}_${dateStr}.xlsx`;
 
     XLSX.writeFile(wb, fileName);
 
