@@ -125,8 +125,8 @@ const DrawingChecker = (() => {
       id: 'compass',
       category: 'surface_dimensions',
       label: '方位記号（N）の記載',
-      description: '方位記号（北を示すN矢印）が図面上に記載されているか。通常は右上に配置',
-      required: true,
+      description: '方位記号（北を示すN矢印）が図面上に記載されているか。通常は右上に配置。5-9-2必須要件ではないが記載推奨',
+      required: false,
     },
   ];
 
@@ -279,7 +279,7 @@ ${typeLabel}
 ### (4) 路面状況・寸法
 - 路面を構成する材質を記載（例: 路面状況：アスファルト、路面状況：土）
 - 寸法線をmm単位で記載
-- 方位記号（N）を記載
+- 方位記号（N）の記載（推奨・必須ではない）
 
 ${type === 'mokutekichi' ? `### (5) 路面表示（目的地充電 必須）
 - 路面表示（EVスペースを示すステッカー）の記載
