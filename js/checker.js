@@ -622,7 +622,23 @@ ${type === 'mokutekichi' ? `### 目的地充電の追加確認
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
-      throw new Error(errData?.error?.message || `API エラー (${response.status})`);
+      const baseMsg = errData?.error?.message || `API エラー (${response.status})`;
+      // 503: モデル混雑 → 別モデルへの切替を案内
+      if (response.status === 503) {
+        const modelName = MODELS.find(m => m.id === useModel)?.name || useModel;
+        throw new Error(
+          `${modelName} のサーバーが混雑しています。\n\n` +
+          `対処方法:\n` +
+          `・別のモデル（Flash等）に切り替えて再試行\n` +
+          `・しばらく時間をおいて再試行（数分〜数十分）\n\n` +
+          `Google公式メッセージ: ${baseMsg}`
+        );
+      }
+      // 429: レート制限
+      if (response.status === 429) {
+        throw new Error(`APIリクエスト上限に達しました。しばらく待ってから再試行してください。\n\n${baseMsg}`);
+      }
+      throw new Error(baseMsg);
     }
 
     const data = await response.json();
